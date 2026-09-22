@@ -105,7 +105,11 @@ for column, label in [('spending','Household spending'), ('social_security','Soc
     ax.plot(ret.year, ret[column] / ret.price_index / 1000, label=label)
 ax.set(xlabel='Year', ylabel='Annual amount ($ thousands, 2026 dollars)',
        title='Baseline retirement cash flows')
-ax.legend(); ax.grid(alpha=.2); plt.show()"""),
+handles, labels = ax.get_legend_handles_labels()
+fig.subplots_adjust(bottom=.25)
+fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(.5,.02),
+           ncol=2, frameon=False)
+ax.grid(alpha=.2); plt.show()"""),
     md("""## Advisory interpretation
 
 The initial 5.8% withdrawal rate warrants review because it occurs before Social Security income begins. The [Morningstar 2025 retirement-income study](https://www.morningstar.com/content/cs-assets/v3/assets/blt9415ea4cc4157833/bltb73b87c5d0c70ead/The_State_of_Retirement_Income_2025.pdf) reports a 3.9% starting reference under its own 30-year assumptions. It is not a pass/fail test for this household. Notebook 03 compares actions the couple could take.
@@ -165,7 +169,11 @@ def plot(cases, title):
         ax.plot(r.year, r.ending / r.price_index / 1e6, label=name)
     ax.axhline(.5, color='gray', linestyle=':', label='$500k real legacy goal')
     ax.set(xlabel='Year', ylabel='Portfolio ($ millions, 2026 dollars)', title=title)
-    ax.legend(); ax.grid(alpha=.2); plt.show()
+    handles, labels = ax.get_legend_handles_labels()
+    fig.subplots_adjust(bottom=.25)
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(.5,.02),
+               ncol=2, frameon=False)
+    ax.grid(alpha=.2); plt.show()
 """),
     md("""## Decision 1 — Retire in 2036 or work until 2038?
 

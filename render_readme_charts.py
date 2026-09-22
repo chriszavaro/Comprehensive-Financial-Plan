@@ -36,7 +36,8 @@ def dollars_millions(value, _):
 
 
 def setup(title, subtitle, y_label):
-    fig, ax = plt.subplots(figsize=(9.4, 4.8), layout="constrained")
+    fig, ax = plt.subplots(figsize=(9.4, 5.3))
+    fig.subplots_adjust(left=.11, right=.97, top=.80, bottom=.27)
     ax.set_title(title, loc="left", color=NAVY, pad=24)
     ax.text(0, 1.025, subtitle, transform=ax.transAxes, color=GRAY, fontsize=9)
     ax.set_xlabel("Year")
@@ -44,6 +45,13 @@ def setup(title, subtitle, y_label):
     ax.grid(axis="y", color="#dde4e9", linewidth=.8)
     ax.spines[["top", "right"]].set_visible(False)
     return fig, ax
+
+
+def legend_below(fig, ax):
+    """Keep every key outside the plotting area."""
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .02),
+               ncol=2, frameon=False, fontsize=9, columnspacing=2)
 
 
 def real_portfolio(rows):
@@ -68,15 +76,10 @@ def portfolio_chart(title, subtitle, cases, filename, markers=None):
         for start, end, label in markers:
             if end is None:
                 ax.axvline(start, color=GRAY, linestyle="--", linewidth=1)
-                ax.text(start + .3, .96, label, transform=ax.get_xaxis_transform(),
-                        fontsize=8, color=GRAY, va="top")
             else:
                 ax.axvspan(start, end, color="#e7eef0", alpha=.8)
-                ax.text((start + end) / 2, .96, label,
-                        transform=ax.get_xaxis_transform(),
-                        ha="center", va="top", fontsize=8, color=GRAY)
     ax.yaxis.set_major_formatter(FuncFormatter(dollars_millions))
-    ax.legend(loc="upper left", frameon=False, fontsize=9)
+    legend_below(fig, ax)
     save(fig, filename)
 
 
@@ -113,7 +116,7 @@ for label, rows, color in [
                for r in rows if 2036 <= r["year"] <= 2046]
     ax.step(years, benefit, where="post", label=label, color=color, linewidth=2.7)
 ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"${value:,.0f}k"))
-ax.legend(loc="upper left", frameon=False, fontsize=9)
+legend_below(fig, ax)
 save(fig, "social_security_claiming.png")
 
 care_survivor = replace(BASE, care_start_year=2048, care_years=3,
