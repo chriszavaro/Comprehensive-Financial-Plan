@@ -1,4 +1,4 @@
-"""Regenerate the two portfolio notebooks with the standard-library JSON writer."""
+"""Regenerate the three portfolio notebooks with the standard-library JSON writer."""
 
 import json
 import hashlib
@@ -75,9 +75,9 @@ The $65,000 annual savings assumption fits the balance sheet and cash-flow sketc
 ])
 
 save("02_retirement_and_estate.ipynb", [
-    md("""# 02 | Retirement income, stress test, and estate review
+    md("""# 02 | Baseline retirement cash flow and estate review
 
-The annual model is deterministic and **does not estimate a probability of success**. It shows whether the stated assumptions support the spending target and how a large loss at retirement changes the path. All spending and Social Security inputs are in 2026 dollars and inflate 2.5% yearly. The portfolio return is a nominal, constant 5% base case; contributions grow 2% until retirement. Portfolio withdrawals occur before each year's return. The 18% withdrawal tax reserve is a planning proxy, not a tax calculation."""),
+This notebook establishes a common baseline for the decisions in Notebook 03. Elena and Marco retire in 2036, claim their illustrative benefits at age 67, and hold planned spending at $145,000 in 2026 dollars. Annual returns are fixed at 5% nominal and inflation at 2.5%. The model is deterministic, not a probability-of-success forecast. Withdrawals precede investment returns. The 18% reserve on portfolio withdrawals is a tax planning proxy, not an account-level tax calculation."""),
     code("""import sys
 from pathlib import Path
 sys.path.insert(0, str(Path.cwd().parent if Path.cwd().name == 'notebooks' else Path.cwd()))
@@ -87,45 +87,143 @@ from financial_plan import Assumptions, project, summary
 
 a = Assumptions()
 base = pd.DataFrame(project(a))
-stress = pd.DataFrame(project(a, shock_year=2036, shock_return=-0.20))
-low_return = pd.DataFrame(project(Assumptions(nominal_return=0.04)))
-combined = pd.DataFrame(project(Assumptions(nominal_return=0.04), shock_year=2036, shock_return=-0.20))
-cases = pd.DataFrame({name: summary(frame.to_dict('records')) for name, frame in
-                      [('Base: 5% nominal', base), ('2036 loss: -20%', stress), ('4% nominal', low_return), ('Combined downside', combined)]}).T
-display(cases.style.format({'retirement_portfolio':'${:,.0f}', 'first_year_withdrawal':'${:,.0f}',
-                            'first_year_rate':'{:.1%}', 'age_95_portfolio':'${:,.0f}'}))"""),
-    md("""## Retirement paycheck
+report = summary(base.to_dict('records'))
+display(pd.Series(report, name='Baseline result').to_frame())
+print(f"2066 portfolio: ${report['age_95_portfolio_real']:,.0f} in 2026 purchasing power")"""),
+    md("""## Where the retirement paycheck comes from
 
-The couple retires in 2036. Elena's modeled Social Security begins at age 67 in 2038; Marco's begins at 67 in 2040. The two bridge years have the highest starting withdrawal pressure. The model does not optimize claiming ages or calculate taxation of Social Security, Medicare premiums, ACA coverage, capital gains, RMDs, or individual account withdrawal order."""),
+The first two retirement years precede both Social Security benefits. Elena begins her modeled benefit in 2038 and Marco in 2040. The annual withdrawal is the spending gap divided by 0.82 to allow an illustrative 18% tax reserve. The portfolio never uses the separate $100,000 emergency cash or home equity."""),
     code("""display(base.loc[base.year.between(2035, 2042),
                  ['year','age_a','age_b','opening','spending','social_security','portfolio_withdrawal','withdrawal_rate','ending']]
         .style.format({'opening':'${:,.0f}','spending':'${:,.0f}',
                        'social_security':'${:,.0f}','portfolio_withdrawal':'${:,.0f}',
                        'withdrawal_rate':'{:.1%}','ending':'${:,.0f}'}))
+ret = base[base.retired]
 fig, ax = plt.subplots(figsize=(9, 5))
-for label, frame in [('Base',base), ('20% loss at retirement',stress), ('4% return',low_return), ('Combined downside',combined)]:
-    ax.plot(frame.age_a, frame.ending / 1e6 / (1+a.inflation)**(frame.year-a.start_year), label=label)
-ax.axhline(.5, color='gray', linestyle=':', label='$500k real legacy goal')
-ax.set(xlabel='Elena age', ylabel='Year-end portfolio ($ millions, 2026 dollars)', title='Illustrative portfolio paths')
+for column, label in [('spending','Household spending'), ('social_security','Social Security'),
+                      ('portfolio_withdrawal','Gross portfolio withdrawal')]:
+    ax.plot(ret.year, ret[column] / ret.price_index / 1000, label=label)
+ax.set(xlabel='Year', ylabel='Annual amount ($ thousands, 2026 dollars)',
+       title='Baseline retirement cash flows')
 ax.legend(); ax.grid(alpha=.2); plt.show()"""),
-    md("""## Withdrawal guardrail and adviser judgment
+    md("""## Advisory interpretation
 
-Compare the first retirement withdrawal with the opening retirement portfolio and the [Morningstar 2025 base-case 3.9% starting rate](https://www.morningstar.com/content/cs-assets/v3/assets/blt9415ea4cc4157833/bltb73b87c5d0c70ead/692f43f57737a31596684522/working_file_11.19_FINAL_REVISE.pdf), which assumes a 30-year horizon and 90% probability of funds remaining under its own capital-market assumptions. This case has a two-year Social Security bridge and a roughly 30-year horizon, so 3.9% is only a reference point. An adviser should review an annual guardrail: if the current withdrawal rate rises above 5%, pause discretionary increases and revisit the plan; below 4%, review whether spending or gifting can rise. These thresholds are illustrative policy choices, not proven safe rates."""),
-    code("""retirement = base[base.retired].iloc[0]
-print(f'Opening retirement portfolio: ${retirement.opening:,.0f}')
-print(f'First-year gross portfolio withdrawal: ${retirement.portfolio_withdrawal:,.0f}')
-print(f'First-year withdrawal rate: {retirement.withdrawal_rate:.2%}')
-print(f'Base age-95 portfolio in 2026 dollars: ${base.iloc[-1].ending/(1+a.inflation)**(base.iloc[-1].year-a.start_year):,.0f}')
-print(f'Loss scenario age-95 portfolio in 2026 dollars: ${stress.iloc[-1].ending/(1+a.inflation)**(stress.iloc[-1].year-a.start_year):,.0f}')"""),
-    md("""## Estate, protection, and implementation checklist
+The initial 5.8% withdrawal rate warrants review because it occurs before Social Security income begins. The [Morningstar 2025 retirement-income study](https://www.morningstar.com/content/cs-assets/v3/assets/blt9415ea4cc4157833/bltb73b87c5d0c70ead/The_State_of_Retirement_Income_2025.pdf) reports a 3.9% starting reference under its own 30-year assumptions. It is not a pass/fail test for this household. Notebook 03 compares actions the couple could take.
 
-1. **Title and beneficiaries:** reconcile the will or revocable trust with retirement-account and life-insurance beneficiary designations. Check contingent beneficiaries and whether assets pass outside probate.
-2. **Incapacity:** have a qualified attorney prepare or review durable financial and health-care powers of attorney, advance directives, and any trust documents under the relevant state law. Name successors.
-3. **Survivor and insurance risk:** review term-life coverage before retirement, disability coverage while working, long-term-care funding choices, and the cash needs of the surviving spouse. A single-survivor tax and Social Security model remains to be built from real client data.
-4. **Estate tax:** the 2026 federal basic exclusion is $15 million per person. The current illustrative net worth is well below that level, so execution, beneficiary coordination, and state-specific law are more immediate than federal estate tax minimization. Future law and appreciation require review.
-5. **Tax coordination:** review Roth conversions during lower-income years, investment location, RMD timing, charitable intent, and capital-gain realization with a tax professional. The present notebook does not optimize these decisions.
+## Estate and implementation checklist
 
-**Sources:** [IRS estate exclusion](https://www.irs.gov/instructions/i706), [CFPB durable financial power of attorney](https://www.consumerfinance.gov/ask-cfpb/what-is-a-power-of-attorney-poa-en-1149/), [IRS RMD FAQ](https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs).""")
+1. Reconcile wills or a trust with account beneficiaries, contingent beneficiaries, and property titles.
+2. Review durable financial and health-care powers of attorney and advance directives with qualified counsel. [CFPB guidance](https://www.consumerfinance.gov/ask-cfpb/what-is-a-power-of-attorney-poa-en-1149/).
+3. Price survivor, life, disability, and long-term-care protection; test a single-survivor budget in Notebook 03.
+4. Review Roth conversions, withdrawal order, and RMD timing with a tax professional. [IRS RMD guidance](https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs).
+5. The [2026 federal estate basic exclusion is $15 million per person](https://www.irs.gov/instructions/i706), above the fictional current net worth. State-specific law and document execution still matter.
+
+The baseline omits fees, return volatility, account-level taxes, Medicare premiums, and changes in law.""")
 ])
 
+save("03_client_decisions.ipynb", [
+    md("""# 03 | Client decisions and resilience
 
+Four comparisons turn the financial plan into an advisory conversation: retirement timing, a spending response to a downturn, Social Security claiming, and care plus survivor needs. Every dollar amount in a scenario is an explicit illustration, not a prediction. The comparisons share a 5% nominal annual return and 2.5% inflation unless the same one-year 2036 downturn is imposed on both choices in the spending comparison. No success probability is claimed.
+
+**Read the endpoint correctly:** 2066 is Elena's modeled age 95 and Marco's age 93. In the survivor case Elena dies in 2051, so the 2066 balance belongs to Marco's remaining household, not to Elena."""),
+    code("""import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd().parent if Path.cwd().name == 'notebooks' else Path.cwd()))
+from dataclasses import replace
+import pandas as pd
+import matplotlib.pyplot as plt
+from financial_plan import Assumptions, project, summary
+
+a = Assumptions()
+def frame(assumptions=a, shock=False):
+    return pd.DataFrame(project(assumptions, shock_year=2036 if shock else None,
+                                shock_return=-.20 if shock else None))
+def metrics(cases):
+    records = {}
+    for name, data in cases.items():
+        s = summary(data.to_dict('records'))
+        records[name] = {'Retire': s['retirement_year'],
+                         'First withdrawal rate': s['first_year_rate'],
+                         'Lowest real portfolio': s['lowest_retirement_balance_real'],
+                         '2066 real portfolio': s['age_95_portfolio_real'],
+                         'First shortfall': s['first_shortfall_year'] or 'None',
+                         'Real spending cuts': s['total_spending_cuts_real'],
+                         'Real care cost': s['total_care_cost_real']}
+    return pd.DataFrame.from_dict(records, orient='index')
+def show(cases):
+    display(metrics(cases).style.format({
+        'First withdrawal rate':'{:.1%}',
+        'Lowest real portfolio':'${:,.0f}',
+        '2066 real portfolio':'${:,.0f}',
+        'Real spending cuts':'${:,.0f}',
+        'Real care cost':'${:,.0f}'}))
+def plot(cases, title):
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    for name, data in cases.items():
+        r = data[data.retired]
+        ax.plot(r.year, r.ending / r.price_index / 1e6, label=name)
+    ax.axhline(.5, color='gray', linestyle=':', label='$500k real legacy goal')
+    ax.set(xlabel='Year', ylabel='Portfolio ($ millions, 2026 dollars)', title=title)
+    ax.legend(); ax.grid(alpha=.2); plt.show()
+"""),
+    md("""## Decision 1 — Retire in 2036 or work until 2038?
+
+Both spouses work and continue modeled saving for two more years in the later-retirement case. The same spending target and claiming ages are used, so the comparison isolates the added contributions and two fewer withdrawal years. It does **not** value the time, health, or satisfaction from retiring earlier."""),
+    code("""timing = {'Retire 2036': frame(),
+          'Retire 2038': frame(replace(a, retirement_age_a=67))}
+show(timing)
+plot(timing, 'Retirement timing')
+print('Trade-off: two more working years reduce the first-year portfolio withdrawal rate and increase the modeled 2066 balance.')"""),
+    md("""## Decision 2 — Hold spending or make a temporary discretionary cut?
+
+Both paths suffer the same illustrative 20% portfolio return in 2036. The flexible path cuts $25,000 a year in 2026 purchasing power during 2037–2039, reducing the $145,000 target to the stated $120,000 essential-spending floor for those years. Spending returns to the original target in 2040. This is a defined client choice, not an automatically optimized withdrawal rule. [Morningstar's retirement-income research](https://www.morningstar.com/content/cs-assets/v3/assets/blt9415ea4cc4157833/bltb73b87c5d0c70ead/The_State_of_Retirement_Income_2025.pdf) discusses flexible spending methods; these exact cut amounts are our case assumptions."""),
+    code("""flex_a = replace(a, discretionary_cut_today=25_000, cut_start_year=2037, cut_end_year=2039)
+spending_cases = {'Maintain $145k target': frame(shock=True),
+                  'Cut to $120k for 3 years': frame(flex_a, shock=True)}
+show(spending_cases)
+plot(spending_cases, 'Same downturn, different spending decisions')
+display(spending_cases['Cut to $120k for 3 years'].loc[
+    lambda x: x.year.between(2036, 2040),
+    ['year','spending','spending_cut','portfolio_withdrawal','ending']]
+    .style.format({'spending':'${:,.0f}','spending_cut':'${:,.0f}',
+                   'portfolio_withdrawal':'${:,.0f}','ending':'${:,.0f}'}))"""),
+    md("""## Decision 3 — Claim Elena's benefit at 67 or 70?
+
+Marco claims at 67 in both paths. Delaying Elena's modeled $46,000 age-67 benefit to 70 raises it by 24% to $57,040 in 2026 dollars under the [SSA delayed-credit schedule](https://www.ssa.gov/benefits/retirement/planner/delayret.html). The household must fund three more years without Elena's benefit. The second comparison adds the same 2051 survivor transition to both paths. The model uses the higher of the two benefits as a simplified survivor-income proxy; actual survivor rules and benefit statements require an SSA review."""),
+    code("""claiming = {'Elena claims 67': frame(),
+            'Elena claims 70': frame(replace(a, claim_age_a=70))}
+show(claiming)
+display(pd.DataFrame({
+    name: data.loc[data.year.between(2038, 2043), 'social_security'].to_numpy() /
+          data.loc[data.year.between(2038, 2043), 'price_index'].to_numpy()
+    for name, data in claiming.items()}, index=range(2038, 2044)).style.format('${:,.0f}'))
+survivor_claiming = {'Claim 67, survivor in 2051': frame(replace(a, survivor_year=2051)),
+                    'Claim 70, survivor in 2051': frame(replace(a, claim_age_a=70, survivor_year=2051))}
+show(survivor_claiming)"""),
+    md("""## Decision 4 — Fund care and protect the surviving spouse
+
+Assume an extra $90,000 per year in 2026 purchasing power for care during 2048–2050. Then Elena dies in 2051; Marco's household spending falls from $145,000 to an assumed $110,000 real annually, and Social Security falls from two benefits to a simplified higher-benefit survivor proxy. Separate care-only and survivor-only paths reveal how each assumption changes the result. The 18% portfolio-withdrawal tax reserve remains fixed, so this is **not** a widow tax or long-term-care insurance analysis."""),
+    code("""care_a = replace(a, care_start_year=2048, care_years=3, care_cost_today=90_000)
+survivor_a = replace(a, survivor_year=2051)
+combined_a = replace(care_a, survivor_year=2051)
+life_events = {'No life event': frame(), 'Care only': frame(care_a),
+               'Survivor only': frame(survivor_a), 'Care then survivor': frame(combined_a)}
+show(life_events)
+plot(life_events, 'Care expense and survivor cash flow')
+display(life_events['Care then survivor'].loc[
+    lambda x: x.year.between(2047, 2053),
+    ['year','spending','care_cost','social_security','portfolio_withdrawal','ending']]
+    .style.format({'spending':'${:,.0f}','care_cost':'${:,.0f}',
+                   'social_security':'${:,.0f}','portfolio_withdrawal':'${:,.0f}',
+                   'ending':'${:,.0f}'}))"""),
+    md("""## Adviser recommendation and follow-up
+
+1. Confirm the household's actual benefit statements, health costs, and essential-versus-discretionary budget. The 2038 retirement option materially reduces initial withdrawal pressure, but its lifestyle cost must be discussed.
+2. Write a spending policy before retirement: identify the $25,000 of discretionary expenses that could be paused for three years. Agree on when the cut starts and ends; do not assume clients will accept it without discussion.
+3. Compare Social Security claiming with individual life expectancy and survivor needs. Claiming at 70 raises the modeled benefit but requires more early portfolio cash.
+4. Obtain long-term-care quotes and legal documents. The care and survivor costs are assumptions, while actual benefits, taxes, insurance, estate documents, and state law must be verified.
+5. Recalculate annually. These deterministic paths omit return volatility beyond the stated shock, investment fees, tax-bracket interactions, Medicare premiums, RMDs, and changes in law. The 2066 balance is an illustration, not a guaranteed inheritance.
+
+**Sources:** [SSA delayed credits](https://www.ssa.gov/benefits/retirement/planner/delayret.html), [SSA survivor-benefit overview](https://www.ssa.gov/benefits/retirement/planner/claiming.html), [Morningstar 2025 retirement-income research](https://www.morningstar.com/content/cs-assets/v3/assets/blt9415ea4cc4157833/bltb73b87c5d0c70ead/The_State_of_Retirement_Income_2025.pdf), [IRS beneficiary guidance](https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-beneficiary).""")
+])
