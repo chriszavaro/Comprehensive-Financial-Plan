@@ -15,6 +15,32 @@ Elena and Marco can provisionally target retirement in 2036, but the first model
 
 The 2036 downturn in the spending comparison is an assumed **20% investment return loss for that one year in both paths**. It isolates the spending choice rather than presenting a market-return assumption as a recommendation. All paths are deterministic illustrations, **not probabilities of success**.
 
+## Scenario charts
+
+### Retirement timing
+
+![Real portfolio balance for retirement in 2036 versus 2038, with a $500,000 legacy reference line](assets/retirement_timing.png)
+
+Working through 2038 adds two years of saving and shortens the withdrawal period. The chart shows year-end portfolio values in **2026 purchasing power**.
+
+### Flexible spending after a downturn
+
+![Real portfolio balance after the same 2036 loss, comparing planned spending with a three-year discretionary cut](assets/flexible_spending.png)
+
+Both paths experience the same assumed 20% loss in 2036. The spending-cut path reduces spending by $25,000 in 2026 dollars during 2037–2039, then restores the original target.
+
+### Social Security claiming
+
+![Annual real household Social Security income when Elena claims at 67 versus 70 and Marco claims at 67](assets/social_security_claiming.png)
+
+Elena's later claim means more portfolio funding in 2038–2040 and a higher modeled annual benefit afterward. The chart shows household Social Security in **2026 dollars**.
+
+### Care and survivor needs
+
+![Real portfolio balance for the baseline versus three years of care costs followed by a survivor transition](assets/care_and_survivor.png)
+
+The shaded years add $90,000 annually in real care costs. From 2051, Marco has a single-person spending budget and the model's simplified survivor benefit.
+
 ## Fictional client profile
 
 Elena (55) and Marco (53) are married, file jointly, and earn $180,000 and $120,000. Their two adult children are financially independent. They would like to retire together when Elena turns 65 in 2036, spend **$145,000 annually in 2026 purchasing power**, preserve a **$120,000 essential-spending floor**, and leave at least **$500,000 real** to heirs if feasible. Their risk tolerance is moderate.
@@ -58,7 +84,7 @@ Install Python 3.11 or later and the packages in [requirements.txt](requirements
 2. [02_retirement_and_estate.ipynb](notebooks/02_retirement_and_estate.ipynb) — baseline retirement paycheck and estate checklist.
 3. [03_client_decisions.ipynb](notebooks/03_client_decisions.ipynb) — four decision comparisons, charts, and adviser follow-up.
 
-The notebooks include saved outputs. [financial_plan.py](financial_plan.py) contains the model and [test_financial_plan.py](test_financial_plan.py) checks its material mechanics. Run build_notebooks.py to regenerate blank notebooks, then execute them to refresh outputs.
+The notebooks include saved outputs. [financial_plan.py](financial_plan.py) contains the model and [test_financial_plan.py](test_financial_plan.py) checks its material mechanics. Run build_notebooks.py to regenerate blank notebooks, then execute them to refresh outputs. Run render_readme_charts.py to regenerate the four README images from the same scenario model.
 
 ## Limits
 
