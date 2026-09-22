@@ -88,7 +88,7 @@ portfolio_chart(
     "Same spending and claiming assumptions; two additional working years.",
     {"Retire in 2036": project(BASE),
      "Retire in 2038": project(replace(BASE, retirement_age_a=67))},
-    "retirement_timing.png",
+    "retirement_timing_v2.png",
 )
 
 portfolio_chart(
@@ -98,7 +98,7 @@ portfolio_chart(
      "Cut discretionary spending in 2037–2039": project(
          replace(BASE, discretionary_cut_today=25_000,
                  cut_start_year=2037, cut_end_year=2039), 2036, -.20)},
-    "flexible_spending.png",
+    "flexible_spending_v2.png",
     markers=[(2037, 2039, "Spending cut")],
 )
 
@@ -117,7 +117,7 @@ for label, rows, color in [
     ax.step(years, benefit, where="post", label=label, color=color, linewidth=2.7)
 ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"${value:,.0f}k"))
 legend_below(fig, ax)
-save(fig, "social_security_claiming.png")
+save(fig, "social_security_claiming_v2.png")
 
 care_survivor = replace(BASE, care_start_year=2048, care_years=3,
                         care_cost_today=90_000, survivor_year=2051)
@@ -125,7 +125,7 @@ portfolio_chart(
     "What if care is needed before a survivor transition?",
     "Care costs in 2048–2050; Marco becomes the surviving spouse in 2051.",
     {"Baseline": project(BASE), "Care, then survivor": project(care_survivor)},
-    "care_and_survivor.png",
+    "care_and_survivor_v2.png",
     markers=[(2048, 2050, "Care costs"), (2051, None, "Survivor")],
 )
-print("Rendered", ", ".join(p.name for p in sorted(OUT.glob("*.png"))))
+print("Rendered", ", ".join(p.name for p in sorted(OUT.glob("*_v2.png"))))

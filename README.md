@@ -19,25 +19,25 @@ The 2036 downturn in the spending comparison is an assumed **20% investment retu
 
 ### Retirement timing
 
-![Real portfolio balance for retirement in 2036 versus 2038, with a $500,000 legacy reference line](assets/retirement_timing.png)
+![Real portfolio balance for retirement in 2036 versus 2038, with a $500,000 legacy reference line](assets/retirement_timing_v2.png)
 
 Working through 2038 adds two years of saving and shortens the withdrawal period. The chart shows year-end portfolio values in **2026 purchasing power**.
 
 ### Flexible spending after a downturn
 
-![Real portfolio balance after the same 2036 loss, comparing planned spending with a three-year discretionary cut](assets/flexible_spending.png)
+![Real portfolio balance after the same 2036 loss, comparing planned spending with a three-year discretionary cut](assets/flexible_spending_v2.png)
 
 Both paths experience the same assumed 20% loss in 2036. The spending-cut path reduces spending by $25,000 in 2026 dollars during 2037–2039, then restores the original target.
 
 ### Social Security claiming
 
-![Annual real household Social Security income when Elena claims at 67 versus 70 and Marco claims at 67](assets/social_security_claiming.png)
+![Annual real household Social Security income when Elena claims at 67 versus 70 and Marco claims at 67](assets/social_security_claiming_v2.png)
 
 Elena's later claim means more portfolio funding in 2038–2040 and a higher modeled annual benefit afterward. The chart shows household Social Security in **2026 dollars**.
 
 ### Care and survivor needs
 
-![Real portfolio balance for the baseline versus three years of care costs followed by a survivor transition](assets/care_and_survivor.png)
+![Real portfolio balance for the baseline versus three years of care costs followed by a survivor transition](assets/care_and_survivor_v2.png)
 
 The shaded years add $90,000 annually in real care costs. From 2051, Marco has a single-person spending budget and the model's simplified survivor benefit.
 
