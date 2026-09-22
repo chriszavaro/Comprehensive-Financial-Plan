@@ -16,11 +16,20 @@ class Assumptions:
     annual_savings: float = 65_000
     savings_growth: float = 0.02
     retirement_spending_today: float = 145_000
+    essential_spending_today: float = 120_000
+    survivor_spending_today: float = 110_000
     ss_a_today: float = 46_000
     ss_b_today: float = 32_000
     inflation: float = 0.025
     nominal_return: float = 0.05
     withdrawal_tax_reserve: float = 0.18
+    discretionary_cut_today: float = 0.0
+    cut_start_year: int | None = None
+    cut_end_year: int | None = None
+    survivor_year: int | None = None
+    care_start_year: int | None = None
+    care_years: int = 0
+    care_cost_today: float = 0.0
 
 
 def federal_tax_mfj_2026(gross_income: float, pretax_deferrals: float = 0) -> float:
@@ -39,8 +48,26 @@ def federal_tax_mfj_2026(gross_income: float, pretax_deferrals: float = 0) -> fl
     return tax
 
 
+def _validate(a: Assumptions, shock_year, shock_return) -> None:
+    if not 67 <= a.claim_age_a <= 70 or not 67 <= a.claim_age_b <= 70:
+        raise ValueError("This case supports Social Security claiming ages 67 through 70")
+    if not 0 <= a.discretionary_cut_today <= a.retirement_spending_today - a.essential_spending_today:
+        raise ValueError("Spending cut must preserve the essential-spending floor")
+    if a.care_cost_today < 0 or a.care_years < 0:
+        raise ValueError("Care cost and duration cannot be negative")
+    if shock_year is not None and shock_return is None:
+        raise ValueError("A shock year requires a return")
+    if a.cut_start_year is not None and a.cut_end_year is None:
+        raise ValueError("A spending cut requires an end year")
+
+
 def project(a: Assumptions = Assumptions(), shock_year=None, shock_return=None):
-    """List of annual rows. Withdrawals occur at start of year; return follows."""
+    """Annual rows. Withdrawals occur at start of year; return follows.
+
+    Benefits and spending use annual, inflation-indexed proxies. A survivor
+    receives the higher modeled benefit, not both. This is not a tax engine.
+    """
+    _validate(a, shock_year, shock_return)
     rows = []
     balance = a.portfolio
     retirement_year = a.start_year + a.retirement_age_a - a.age_a
@@ -49,10 +76,23 @@ def project(a: Assumptions = Assumptions(), shock_year=None, shock_return=None):
         age_a, age_b = a.age_a + elapsed, a.age_b + elapsed
         retired = year >= retirement_year
         opening = balance
-        spending = a.retirement_spending_today * (1 + a.inflation) ** elapsed if retired else 0.0
-        ss_a = a.ss_a_today * (1 + a.inflation) ** elapsed if age_a >= a.claim_age_a else 0.0
-        ss_b = a.ss_b_today * (1 + a.inflation) ** elapsed if age_b >= a.claim_age_b else 0.0
-        social_security = (ss_a + ss_b) if retired else 0.0
+        price_index = (1 + a.inflation) ** elapsed
+        survivor = a.survivor_year is not None and year >= a.survivor_year
+        scheduled_cut = (a.cut_start_year is not None and a.cut_end_year is not None
+                         and a.cut_start_year <= year <= a.cut_end_year and not survivor)
+        spending_cut = a.discretionary_cut_today * price_index if retired and scheduled_cut else 0.0
+        care_cost = (a.care_cost_today * price_index if retired and a.care_start_year is not None
+                     and a.care_start_year <= year < a.care_start_year + a.care_years else 0.0)
+        household_spending_today = a.survivor_spending_today if survivor else a.retirement_spending_today
+        spending = household_spending_today * price_index - spending_cut + care_cost if retired else 0.0
+
+        # Illustrative FRA=67 benefit; 8% delayed credit for each year to age 70.
+        ss_a = (a.ss_a_today * (1 + .08 * (a.claim_age_a - 67)) * price_index
+                if age_a >= a.claim_age_a else 0.0)
+        ss_b = (a.ss_b_today * (1 + .08 * (a.claim_age_b - 67)) * price_index
+                if age_b >= a.claim_age_b else 0.0)
+        social_security = (max(ss_a, ss_b) if survivor else ss_a + ss_b) if retired else 0.0
+
         gap = max(0.0, spending - social_security)
         withdrawal = gap / (1 - a.withdrawal_tax_reserve) if retired else 0.0
         contribution = a.annual_savings * (1 + a.savings_growth) ** elapsed if not retired else 0.0
@@ -61,17 +101,27 @@ def project(a: Assumptions = Assumptions(), shock_year=None, shock_return=None):
         balance = max(0.0, opening - funded_withdrawal) * (1 + rate) + contribution
         shortfall = withdrawal - funded_withdrawal
         rows.append(dict(year=year, age_a=age_a, age_b=age_b, retired=retired,
-                         opening=opening, spending=spending, social_security=social_security,
-                         portfolio_withdrawal=withdrawal, withdrawal_rate=(withdrawal / opening if opening else 0),
+                         opening=opening, spending=spending, spending_cut=spending_cut,
+                         care_cost=care_cost, survivor=survivor, price_index=price_index,
+                         social_security=social_security, portfolio_withdrawal=withdrawal,
+                         withdrawal_rate=(withdrawal / opening if opening else 0),
                          contribution=contribution, return_rate=rate, ending=balance,
-                         shortfall=shortfall))
+                         shortfall=shortfall,
+                         net_spending_shortfall=shortfall * (1 - a.withdrawal_tax_reserve)))
     return rows
 
 
 def summary(rows):
-    retirement = next(r for r in rows if r['retired'])
-    depleted = next((r['year'] for r in rows if r['shortfall'] > 0), None)
-    return dict(retirement_year=retirement['year'], retirement_portfolio=retirement['opening'],
-                first_year_withdrawal=retirement['portfolio_withdrawal'],
-                first_year_rate=retirement['withdrawal_rate'],
-                age_95_portfolio=rows[-1]['ending'], first_shortfall_year=depleted)
+    retirement = next(r for r in rows if r["retired"])
+    depleted = next((r["year"] for r in rows if r["shortfall"] > 0), None)
+    retired_rows = [r for r in rows if r["retired"]]
+    return dict(retirement_year=retirement["year"],
+                retirement_portfolio=retirement["opening"],
+                first_year_withdrawal=retirement["portfolio_withdrawal"],
+                first_year_rate=retirement["withdrawal_rate"],
+                age_95_portfolio=rows[-1]["ending"],
+                age_95_portfolio_real=rows[-1]["ending"] / rows[-1]["price_index"],
+                lowest_retirement_balance_real=min(r["ending"] / r["price_index"] for r in retired_rows),
+                total_spending_cuts_real=sum(r["spending_cut"] / r["price_index"] for r in retired_rows),
+                total_care_cost_real=sum(r["care_cost"] / r["price_index"] for r in retired_rows),
+                first_shortfall_year=depleted)
